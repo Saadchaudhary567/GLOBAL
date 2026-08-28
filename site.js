@@ -22,14 +22,14 @@ function renderHomeProducts(){
   const size=document.body.dataset.productSize||"medium";
   $("productsGrid").innerHTML=visible.map(p=>{
     const stars="★".repeat(Math.max(0,Math.min(5,Math.round(Number(p.rating)||0))));
-    return `<article class="product-card size-${esc(p.cardSize||size)} imgsize-${esc(p.imageSize||size)}"><div class="product-image fit-${esc(p.imageFit||"contain")}" style="${imageAreaStyle(p)}">${productBadges(p)}${productImage(p)}</div><div class="product-body"><div class="rating">${stars||"☆"} ${esc(p.rating||"")}${p.reviewCount?` <span>(${esc(p.reviewCount)})</span>`:""}</div><h3>${esc(p.name)}</h3>${p.price?`<div class="price">${esc(p.price)} ${p.previousPrice?`<del>${esc(p.previousPrice)}</del>`:""}</div>`:""}<p>${esc(p.description||p.text||"")}</p><div class="pc-actions"><a class="button primary" href="products.html?id=${encodeURIComponent(p.id)}">View Details</a></div></div></article>`;
+    return `<article class="product-card size-${esc(p.cardSize||size)} imgsize-${esc(p.imageSize||size)}"><div class="product-image fit-${esc(p.imageFit||"contain")}" style="${imageAreaStyle(p)}">${productBadges(p)}${productImage(p)}</div><div class="product-body"><div class="rating">${stars||"☆"} ${esc(p.rating||"")}${p.reviewCount?` <span>(${esc(p.reviewCount)})</span>`:""}</div><h3>${esc(p.name)}</h3>${p.price?`<div class="price">${esc(p.price)} ${p.previousPrice?`<del>${esc(p.previousPrice)}</del>`:""}</div>`:""}<div class="pc-actions"><a class="button primary" href="products.html?id=${encodeURIComponent(p.id)}">View Details</a></div></div></article>`;
   }).join("");
   $("emptyProducts").hidden=visible.length>0;
 }
 
 function renderArticles(){
   const visible=articles.filter(a=>a.active!==false&&a.published!==false).sort((a,b)=>(a.order??999)-(b.order??999));
-  $("guidesGrid").innerHTML=visible.map(a=>`<article class="guide-card"><a class="guide-image" href="article.html?id=${encodeURIComponent(a.id)}">${a.image?`<img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy">`:`<span>✦</span>`}</a><div class="guide-body"><p class="eyebrow">${esc(a.category||"BUYING GUIDE")}</p><h3>${esc(a.title)}</h3><p>${esc(a.excerpt||"")}</p><a class="read-button" href="article.html?id=${encodeURIComponent(a.id)}">Read Article →</a></div></article>`).join("");
+  $("guidesGrid").innerHTML=visible.map(a=>`<article class="guide-card"><a class="guide-image" href="article.html?id=${encodeURIComponent(a.id)}">${a.image?`<img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy">`:`<span>✦</span>`}</a><div class="guide-body"><p class="eyebrow">${esc(a.category||"BUYING GUIDE")}</p><h3>${esc(a.title)}</h3><a class="read-button" href="article.html?id=${encodeURIComponent(a.id)}">Read Article →</a></div></article>`).join("");
   $("emptyArticles").hidden=visible.length>0;
 }
 
