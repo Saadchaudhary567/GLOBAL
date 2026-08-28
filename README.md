@@ -1,21 +1,25 @@
 # KitchenZen Website
 
 ## Files
-- index.html
-- style.css
-- script.js
+- index.html, style.css, site.js — Homepage (exactly 6 featured products, categories, about, articles preview)
+- products.html, products.js — Full "All Products" catalog page (every published product, category filters, pros & cons quick-view)
+- article.html, article.js — Full dedicated article page (opened when a visitor clicks an article)
+- common.js — Shared Firebase setup + header/footer/theme logic used by every page
+- admin.html, admin.css, admin.js — Admin Panel
+- firebase-config.js, firestore.rules, storage.rules — Firebase project configuration and security rules
 
 ## How to use
-1. Download the ZIP.
-2. Extract it.
-3. Upload all three files to a GitHub repository.
-4. Enable GitHub Pages from Settings > Pages.
+1. Download and extract the ZIP.
+2. Upload every file to your GitHub repository (same folder level as before).
+3. GitHub Pages / your host will serve index.html, products.html, article.html and admin.html automatically.
 
-## Edit Amazon links
-Open script.js and change the value after:
-url:"https://www.amazon.com/"
-
-Replace it with your own valid Amazon affiliate link.
+## What's new
+- Homepage always shows exactly 6 products, chosen from Admin Panel → Homepage Products tab.
+- All other products appear only on the new All Products page (products.html), reachable from the "Products" nav link and the "View All Products" button.
+- Product images use a pasted Image URL (no uploads) and sit inside a fixed, Amazon-style image area with Zoom and Position (Center/Top/Bottom/Left/Right) controls in the Product form.
+- Pros & Cons no longer appear anywhere on the Homepage — they show on a product's review, opened from the All Products page.
+- Articles open as a full, dedicated page (article.html) with clean ad-placeholder containers, recommended products and related articles — not a small popup.
+- Article images also use a pasted Image URL.
 
 ## Before applying for AdSense
 This website includes a useful starter structure, but approval is not guaranteed. Before applying:

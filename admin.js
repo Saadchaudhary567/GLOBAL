@@ -219,18 +219,22 @@ function productForm(p={active:true}){
   <label>Button Text<input id="pbutton" value="${esc(p.buttonText||"Check Price")}"></label>
   <label>Image Size<select id="pimagesize"><option value="small" ${p.imageSize==="small"?"selected":""}>Small</option><option value="medium" ${!p.imageSize||p.imageSize==="medium"?"selected":""}>Medium</option><option value="large" ${p.imageSize==="large"?"selected":""}>Large</option></select></label>
   <label>Card Size<select id="pcardsize"><option value="small" ${p.cardSize==="small"?"selected":""}>Small</option><option value="medium" ${!p.cardSize||p.cardSize==="medium"?"selected":""}>Medium</option><option value="large" ${p.cardSize==="large"?"selected":""}>Large</option></select></label>
-  <label>Image Fit<select id="pfit"><option value="contain" ${p.imageFit!=="cover"?"selected":""}>Contain</option><option value="cover" ${p.imageFit==="cover"?"selected":""}>Cover</option></select></label>
-  <label>Image Zoom (%)<input id="pimagescale" type="range" min="60" max="150" value="${Number(p.imageScale)||100}"></label>
-  <label>Order<input id="porder" type="number" value="${Number(p.order)||0}"></label>
+  <label>Image Fit<select id="pfit"><option value="contain" ${p.imageFit!=="cover"?"selected":""}>Contain (show whole product, recommended)</option><option value="cover" ${p.imageFit==="cover"?"selected":""}>Cover (fills area, may crop)</option></select></label>
+  <label>Image Zoom / Scale (%)<input id="pimagescale" type="range" min="60" max="150" value="${Number(p.imageScale)||100}"></label>
+  <label>Image Position<select id="pimageposition"><option value="center" ${(!p.imagePosition||p.imagePosition==="center")?"selected":""}>Center</option><option value="top" ${p.imagePosition==="top"?"selected":""}>Top</option><option value="bottom" ${p.imagePosition==="bottom"?"selected":""}>Bottom</option><option value="left" ${p.imagePosition==="left"?"selected":""}>Left</option><option value="right" ${p.imagePosition==="right"?"selected":""}>Right</option></select></label>
+  <label>Order (position on All Products page)<input id="porder" type="number" value="${Number(p.order)||0}"></label>
   </div>
-  <label>Product Image
-  <div class="image-field"><img id="pimagePreview" class="image-preview" src="${esc(p.image||"")}" ${p.image?"":"hidden"}><input type="file" id="pimageFile" accept="image/*"><input type="hidden" id="pimage" value="${esc(p.image||"")}"><button type="button" id="pimageRemove" ${p.image?"":"hidden"}>Remove Image</button></div>
+  <label>Product Image URL
+  <div class="image-field"><input id="pimage" placeholder="https://..." value="${esc(p.image||"")}"><img id="pimagePreview" class="image-preview" src="${esc(p.image||"")}" ${p.image?"":"hidden"}><button type="button" id="pimageRemove" ${p.image?"":"hidden"}>Remove Image URL</button></div>
+  <p class="hint">Paste any image URL (including an Amazon product image URL where technically accessible). It fits automatically inside the fixed, Amazon-style image area — no upload needed.</p>
   </label>
   <label><input id="pactive" type="checkbox" ${p.active!==false?"checked":""}> Show / Publish Product</label>
   <label><input id="ptop" type="checkbox" ${p.topRated?"checked":""}> Mark as Top-Rated</label>
   <label><input id="pfeatured" type="checkbox" ${p.featured?"checked":""}> Mark as Featured</label>
-  <h4>Pros</h4><div id="prosRows">${rows(pros,"pros")}</div><button type="button" class="secondary" id="addPro">+ Add Pro</button>
-  <h4>Cons</h4><div id="consRows">${rows(cons,"cons")}</div><button type="button" class="secondary" id="addCon">+ Add Con</button>
+  <label><input id="pshowhome" type="checkbox" ${p.showOnHome?"checked":""}> Show on Homepage</label>
+  <p class="hint">You can also manage the Homepage's exactly-6 selection from the dedicated <b>Homepage Products</b> tab.</p>
+  <h4>Pros <small>(shown on the product review — Homepage does not show Pros &amp; Cons)</small></h4><div id="prosRows">${rows(pros,"pros")}</div><button type="button" class="secondary" id="addPro">+ Add Pro</button>
+  <h4>Cons <small>(shown on the product review — Homepage does not show Pros &amp; Cons)</small></h4><div id="consRows">${rows(cons,"cons")}</div><button type="button" class="secondary" id="addCon">+ Add Con</button>
   <br><button id="saveProduct">Save Product</button>`;
 }
 
@@ -238,18 +242,10 @@ function bindProduct(id){
   $('addPro').onclick=()=>{$('prosRows').insertAdjacentHTML('beforeend','<div class="array-row"><input data-pros><button type="button" class="mv" onclick="moveRow(this,-1)">↑</button><button type="button" class="mv" onclick="moveRow(this,1)">↓</button><button type="button" onclick="this.parentElement.remove()">×</button></div>')};
   $('addCon').onclick=()=>{$('consRows').insertAdjacentHTML('beforeend','<div class="array-row"><input data-cons><button type="button" class="mv" onclick="moveRow(this,-1)">↑</button><button type="button" class="mv" onclick="moveRow(this,1)">↓</button><button type="button" onclick="this.parentElement.remove()">×</button></div>')};
 
-  $('pimageFile').onchange=async()=>{
-    const f=$('pimageFile').files[0];
-    if(!f)return;
-    try{
-      const url=await uploadTo("images/products",f);
-      $('pimage').value=url;
-      $('pimagePreview').src=url;
-      $('pimagePreview').hidden=false;
-      $('pimageRemove').hidden=false;
-      $('pimageFile').value="";
-      loadGallery();
-    }catch(e){alert(e.message)}
+  $('pimage').oninput=()=>{
+    const url=$('pimage').value.trim();
+    if(url){$('pimagePreview').src=url;$('pimagePreview').hidden=false;$('pimageRemove').hidden=false}
+    else{$('pimagePreview').hidden=true;$('pimagePreview').src="";$('pimageRemove').hidden=true}
   };
   $('pimageRemove').onclick=()=>{
     $('pimage').value="";
@@ -263,7 +259,7 @@ function bindProduct(id){
       name:$('pname').value.trim(),
       description:$('pdesc').value,
       category:$('pcat').value,
-      image:$('pimage').value,
+      image:$('pimage').value.trim(),
       price:$('pprice').value,
       previousPrice:$('pprevious').value,
       rating:Number($('prating').value)||0,
@@ -274,6 +270,7 @@ function bindProduct(id){
       cardSize:$('pcardsize').value,
       imageFit:$('pfit').value,
       imageScale:Number($('pimagescale').value)||100,
+      imagePosition:$('pimageposition').value,
       order:Number($('porder').value)||0,
       active:$('pactive').checked,
       published:$('pactive').checked,
@@ -283,6 +280,19 @@ function bindProduct(id){
       cons:[...document.querySelectorAll('[data-cons]')].map(x=>x.value.trim()).filter(Boolean)
     };
     if(!d.name)return alert("Product name is required.");
+    const wantsHome=$('pshowhome').checked;
+    const currentHomeCount=products.filter(x=>x.showOnHome===true&&x.id!==id).length;
+    if(wantsHome&&currentHomeCount>=6){
+      alert("The Homepage already has 6 selected products. Remove one first (here or in the Homepage Products tab) before adding another.");
+      return;
+    }
+    d.showOnHome=wantsHome;
+    if(wantsHome){
+      const existing=id?products.find(x=>x.id===id):null;
+      d.homeOrder=Number(existing?.homeOrder)||(currentHomeCount+1);
+    }else{
+      d.homeOrder=null;
+    }
     id?await setDoc(doc(db,"products",id),d,{merge:true}):await addDoc(collection(db,"products"),d);
     $('productEditor').hidden=true;
   };
@@ -294,42 +304,71 @@ $('newProduct').onclick=()=>{
 };
 
 function renderProducts(){
-  $('productList').innerHTML=[...products].sort((a,b)=>(a.order??999)-(b.order??999)).map(p=>`<div class="list-item"><div class="thumb">${p.image?`<img src="${esc(p.image)}">`:"✦"}</div><div class="info"><h3>${esc(p.name)}</h3><p>${esc(p.category||"Uncategorized")} · ${p.active===false?"Hidden":"Visible"} · ${esc(p.price||"")}${p.featured?" · Featured":""}${p.topRated?" · Top-Rated":""}</p></div><button onclick="editProduct('${p.id}')">Edit</button><button class="danger" onclick="removeProduct('${p.id}')">Delete</button></div>`).join("");
+  $('productList').innerHTML=[...products].sort((a,b)=>(a.order??999)-(b.order??999)).map(p=>`<div class="list-item"><div class="thumb">${p.image?`<img src="${esc(p.image)}">`:"✦"}</div><div class="info"><h3>${esc(p.name)}</h3><p>${esc(p.category||"Uncategorized")} · ${p.active===false?"Hidden":"Visible"} · ${esc(p.price||"")}${p.featured?" · Featured":""}${p.topRated?" · Top-Rated":""}${p.showOnHome?" · On Homepage":""}</p></div><button onclick="editProduct('${p.id}')">Edit</button><button class="danger" onclick="removeProduct('${p.id}')">Delete</button></div>`).join("");
+  renderHomeProducts();
 }
+
+// Homepage Products tab: lets the admin pick exactly 6 products for the Homepage and order them there,
+// independently from the "Order" field used on the All Products page.
+function renderHomeProducts(){
+  const list=$('homeProductList');
+  if(!list)return;
+  const selectedCount=products.filter(p=>p.showOnHome===true).length;
+  $('homeSelectedCount').textContent=selectedCount;
+  const sorted=[...products].sort((a,b)=>{
+    const ah=a.showOnHome===true,bh=b.showOnHome===true;
+    if(ah!==bh)return ah?-1:1;
+    if(ah&&bh)return (a.homeOrder??999)-(b.homeOrder??999);
+    return (a.order??999)-(b.order??999);
+  });
+  list.innerHTML=sorted.map(p=>`<div class="list-item"><div class="thumb">${p.image?`<img src="${esc(p.image)}">`:"✦"}</div><div class="info"><h3>${esc(p.name)}</h3><p>${esc(p.category||"Uncategorized")}${p.active===false?" · Hidden (won't show even if selected)":""}</p></div><label style="margin:0;display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" data-home-pick value="${p.id}" ${p.showOnHome?"checked":""}> On Homepage</label><label style="margin:0;display:flex;align-items:center;gap:6px">Position<input type="number" data-for="${p.id}" value="${Number(p.homeOrder)||""}" min="1" max="6" style="width:60px"></label></div>`).join("");
+}
+$('saveHomeProducts')?.addEventListener("click",async()=>{
+  const picks=[...document.querySelectorAll('[data-home-pick]:checked')].map(x=>x.value);
+  if(picks.length>6){alert(`You selected ${picks.length} products. Please select exactly 6 (or fewer) for the Homepage.`);return}
+  const btn=$('saveHomeProducts');
+  btn.disabled=true;btn.textContent="Saving…";
+  try{
+    for(const p of products){
+      const pick=picks.includes(p.id);
+      const orderInput=document.querySelector(`[data-for="${p.id}"]`);
+      const homeOrder=pick?(Number(orderInput?.value)||0):null;
+      if(!!p.showOnHome!==pick||(pick&&p.homeOrder!==homeOrder)){
+        await updateDoc(doc(db,"products",p.id),{showOnHome:pick,homeOrder:pick?homeOrder:null});
+      }
+    }
+    alert("Homepage selection saved.");
+  }catch(e){alert(e.message)}
+  btn.disabled=false;btn.textContent="Save Homepage Selection";
+});
 window.editProduct=id=>{const p=products.find(x=>x.id===id);$('productEditor').hidden=false;$('productEditor').innerHTML=productForm(p);bindProduct(id)};
 window.removeProduct=async id=>{if(confirm("Delete this product?"))await deleteDoc(doc(db,"products",id))};
 
 function articleForm(a={active:true}){
   return `<h3>${a.id?"Edit":"Add"} Article</h3>
   <label>Title<input id="atitle" value="${esc(a.title||"")}" required></label>
-  <label>Excerpt<textarea id="aexcerpt">${esc(a.excerpt||"")}</textarea></label>
-  <label>Article Content<textarea id="acontent">${esc(a.content||"")}</textarea></label>
-  <label>Featured Image
-  <div class="image-field"><img id="aimagePreview" class="image-preview" src="${esc(a.image||"")}" ${a.image?"":"hidden"}><input type="file" id="aimageFile" accept="image/*"><input type="hidden" id="aimage" value="${esc(a.image||"")}"><button type="button" id="aimageRemove" ${a.image?"":"hidden"}>Remove Image</button></div>
+  <label>Excerpt / Description<textarea id="aexcerpt">${esc(a.excerpt||"")}</textarea></label>
+  <label>Article Content<textarea id="acontent" style="min-height:220px">${esc(a.content||"")}</textarea></label>
+  <label>Featured Image URL
+  <div class="image-field"><input id="aimage" placeholder="https://..." value="${esc(a.image||"")}"><img id="aimagePreview" class="image-preview" src="${esc(a.image||"")}" ${a.image?"":"hidden"}><button type="button" id="aimageRemove" ${a.image?"":"hidden"}>Remove Image URL</button></div>
+  <p class="hint">Paste an image URL — it is saved to the article and keeps showing after a page refresh.</p>
   </label>
   <label>Category<input id="acategory" value="${esc(a.category||"Buying Guide")}"></label>
   <label>Order<input id="aorder" type="number" value="${Number(a.order)||0}"></label>
   <h4>Products in this article</h4>
   <div class="product-picker">${products.map(p=>`<label><input type="checkbox" data-article-product value="${p.id}" ${(a.productIds||a.products||[]).some(x=>(typeof x==="string"?x:x.id)===p.id)?"checked":""}> ${esc(p.name)}</label>`).join("")}</div>
   <label><input id="aactive" type="checkbox" ${a.active!==false?"checked":""}> Publish Article</label>
+  <p class="hint">Publishing opens this article as a complete, dedicated article page (article.html) — not a small popup — with related articles from the same category shown automatically.</p>
   <button id="saveArticle">Save Article</button>`;
 }
 
 $('newArticle').onclick=()=>{$('articleEditor').hidden=false;$('articleEditor').innerHTML=articleForm();bindArticle()};
 
 function bindArticle(id){
-  $('aimageFile').onchange=async()=>{
-    const f=$('aimageFile').files[0];
-    if(!f)return;
-    try{
-      const url=await uploadTo("images/articles",f);
-      $('aimage').value=url;
-      $('aimagePreview').src=url;
-      $('aimagePreview').hidden=false;
-      $('aimageRemove').hidden=false;
-      $('aimageFile').value="";
-      loadGallery();
-    }catch(e){alert(e.message)}
+  $('aimage').oninput=()=>{
+    const url=$('aimage').value.trim();
+    if(url){$('aimagePreview').src=url;$('aimagePreview').hidden=false;$('aimageRemove').hidden=false}
+    else{$('aimagePreview').hidden=true;$('aimagePreview').src="";$('aimageRemove').hidden=true}
   };
   $('aimageRemove').onclick=()=>{
     $('aimage').value="";
