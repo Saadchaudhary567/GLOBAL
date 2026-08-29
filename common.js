@@ -1,9 +1,12 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-import {getFirestore,doc,onSnapshot,collection} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import {initializeFirestore,persistentLocalCache,persistentSingleTabManager,doc,onSnapshot,collection} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {firebaseConfig} from "./firebase-config.js";
 
 export const app=initializeApp(firebaseConfig);
-export const db=getFirestore(app);
+// Persistent local cache: after the first successful load, data is stored in the
+// browser's IndexedDB. On repeat visits the site can render instantly from cache
+// while Firestore quietly syncs any changes in the background.
+export const db=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentSingleTabManager()})});
 export {doc,onSnapshot,collection};
 
 export const defaults={heroTitle:"Upgrade Your Kitchen.\nElevate Your Life.",heroSubtitle:"Helpful buying guides, practical product reviews, and kitchen ideas designed to make everyday decisions easier.",aboutTitle:"Making kitchen research easier.",aboutText:"KitchenZen is a modern editorial-style kitchen website focused on useful buying guides, product comparisons and practical recommendations.",contactEmail:"hello@kitchenzen.com",footerText:"Useful kitchen guides, product ideas and practical recommendations.",topBarText:"KitchenZen — Smart Kitchen Picks and Helpful Buying Guides",theme:"sage",font:"modern",social:{},legal:{privacy:"KitchenZen respects your privacy. This page should describe the data, cookies, analytics, advertising and third-party services actually used on this website.",terms:"KitchenZen content is provided for general informational purposes. Product prices, availability and specifications can change, so verify details with the retailer before purchasing.",affiliate:"KitchenZen may earn a commission from qualifying purchases made through affiliate links. Affiliate relationships do not increase the price you pay.",disclaimer:"Product information and opinions are provided for general informational purposes. Always research a product and confirm current information before buying.",cookies:"If KitchenZen uses cookies or similar technologies, this page should explain what they do, why they are used and how visitors can manage them."}};

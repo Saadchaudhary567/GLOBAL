@@ -3,6 +3,7 @@ import {db,doc,onSnapshot,collection,$,esc,applyChrome,initChromeInteractions,pr
 let products=[],articles=[],categories=[];
 
 initChromeInteractions();
+renderSkeletons();
 
 function renderCategories(){
   const visible=categories.filter(c=>c.active!==false).sort((a,b)=>(a.order??999)-(b.order??999));
@@ -29,8 +30,32 @@ function renderHomeProducts(){
 
 function renderArticles(){
   const visible=articles.filter(a=>a.active!==false&&a.published!==false).sort((a,b)=>(a.order??999)-(b.order??999));
-  $("guidesGrid").innerHTML=visible.map(a=>`<article class="guide-card"><a class="guide-image" href="article.html?id=${encodeURIComponent(a.id)}">${a.image?`<img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy">`:`<span>✦</span>`}</a><div class="guide-body"><p class="eyebrow">${esc(a.category||"BUYING GUIDE")}</p><h3>${esc(a.title)}</h3><a class="read-button" href="article.html?id=${encodeURIComponent(a.id)}">Read Article →</a></div></article>`).join("");
+  $("guidesGrid").innerHTML=visible.map(a=>`<article class="guide-card"><a class="guide-image" href="article.html?id=${encodeURIComponent(a.id)}">${a.image?`<img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy">`:`<span>✦</span>`}</a><div class="guide-body"><p class="eyebrow">${esc(a.category||"BUYING GUIDE")}</p><h3>${esc(a.title)}</h3><p>${esc(a.excerpt||"")}</p><a class="read-button" href="article.html?id=${encodeURIComponent(a.id)}">Read Article →</a></div></article>`).join("");
   $("emptyArticles").hidden=visible.length>0;
+}
+
+// Shows lightweight pulsing placeholder cards the instant the page loads,
+// so visitors see something immediately instead of blank sections while
+// Firestore data streams in. Real content overwrites these automatically
+// as soon as each onSnapshot listener below fires.
+function renderSkeletons(){
+  if(!document.getElementById("skeletonStyles")){
+    const style=document.createElement("style");
+    style.id="skeletonStyles";
+    style.textContent=`
+      .skel{background:linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%);background-size:400% 100%;animation:skel-pulse 1.4s ease infinite;border-radius:10px}
+      @keyframes skel-pulse{0%{background-position:100% 50%}100%{background-position:0 50%}}
+      .skel-category{height:90px;width:120px;flex:none;display:inline-block;margin-right:12px}
+      .skel-card{height:280px}
+    `;
+    document.head.appendChild(style);
+  }
+  const catGrid=$("categoriesGrid");
+  if(catGrid&&!catGrid.innerHTML.trim())catGrid.innerHTML=Array(6).fill('<div class="skel skel-category"></div>').join("");
+  const prodGrid=$("productsGrid");
+  if(prodGrid&&!prodGrid.innerHTML.trim())prodGrid.innerHTML=Array(6).fill('<div class="skel skel-card"></div>').join("");
+  const guideGrid=$("guidesGrid");
+  if(guideGrid&&!guideGrid.innerHTML.trim())guideGrid.innerHTML=Array(3).fill('<div class="skel skel-card"></div>').join("");
 }
 
 function initCategoryCarousel(){
