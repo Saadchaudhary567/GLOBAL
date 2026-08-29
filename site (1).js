@@ -56,3 +56,46 @@ try{
   onSnapshot(collection(db,"products"),s=>{products=s.docs.map(x=>({id:x.id,...x.data()}));renderHomeProducts()},e=>{console.error("products:",e);products=[];renderHomeProducts()});
   onSnapshot(collection(db,"articles"),s=>{articles=s.docs.map(x=>({id:x.id,...x.data()}));renderArticles()},e=>{console.error("articles:",e);articles=[];renderArticles()});
 }catch(e){console.error(e)}
+
+// --- LEGAL FOOTER LINKS FIX (Privacy Policy, Terms, Affiliate, Disclaimer, Cookies) ---
+function initLegalModal(){
+  const modal = document.getElementById("articleModal");
+  const modalContent = document.getElementById("modalContent");
+  const closeBtn = document.getElementById("closeModal");
+  if(!modal || !modalContent) return;
+
+  function openModal(html){
+    modalContent.innerHTML = html;
+    modal.setAttribute("aria-hidden","false");
+    modal.classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(){
+    modal.setAttribute("aria-hidden","true");
+    modal.classList.remove("open");
+    document.body.style.overflow = "";
+  }
+
+  document.querySelectorAll("[data-legal]").forEach(link=>{
+    link.addEventListener("click", (e)=>{
+      e.preventDefault();
+      const key = link.dataset.legal; // privacy | terms | affiliate | disclaimer | cookies
+      const source = document.getElementById(key);
+      if(source){
+        openModal(source.innerHTML);
+      } else {
+        openModal("<p>Content coming soon.</p>");
+      }
+    });
+  });
+
+  closeBtn?.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e)=>{
+    if(e.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape") closeModal();
+  });
+}
+initLegalModal();
