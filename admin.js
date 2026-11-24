@@ -3,6 +3,7 @@ import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut,EmailAuthP
 import {getFirestore,doc,getDoc,setDoc,updateDoc,collection,onSnapshot,addDoc,deleteDoc} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {getStorage,ref,uploadBytes,getDownloadURL,listAll,deleteObject} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 import {firebaseConfig} from "./firebase-config.js";
+import {createEditor,plainToHtml} from "./richtext.js";
 
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),storage=getStorage(app);
 let content={},products=[],articles=[],categories=[],started=false;
@@ -10,6 +11,10 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 
 const ICON_PRESETS=["✦","♨","♜","⚔","▱","☕","▣","◉"];
+const HOME_LIMIT=12; // max products per homepage section
+// Which homepage section a product belongs to: "top", "decor" or "" (none). Older products that only had showOnHome=true count as "top".
+const curSection=p=>p.homeSection||(p.showOnHome===true?"top":"");
+let articleEditor=null;
 
 function showTab(n){document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));$("tab-"+n).classList.add("active")}
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
@@ -50,6 +55,12 @@ function fillAll(){
   $('topBarFontSize').value=c.topBarFontSize||13;
   $('topBarSpeed').value=c.topBarSpeed||28;
   $('topBarAnimation').checked=c.topBarAnimation!==false;
+  $('homeTopEyebrow').value=c.homeTopEyebrow||"EDITOR'S SELECTION";
+  $('homeTopTitle').value=c.homeTopTitle||"Top Rated Products";
+  $('homeArticlesBeforeDecor').value=c.homeArticlesBeforeDecor??4;
+  $('homeDecorEyebrow').value=c.homeDecorEyebrow||"HOME & DECOR";
+  $('homeDecorTitle').value=c.homeDecorTitle||"Home Decor Picks";
+  $('homeMoreTitle').value=c.homeMoreTitle||"More Buying Guides";
   $('aboutTitleInput').value=c.aboutTitle||"";
   $('aboutTextInput').value=c.aboutText||"";
   $('aboutImageInput').value=c.aboutImage||"";
@@ -88,6 +99,19 @@ async function uploadTo(folder,file){
 $("homeForm").onsubmit=e=>{
   e.preventDefault();
   saveMain({topBarText:$('topBarInput').value,heroTitle:$('heroTitleInput').value,heroSubtitle:$('heroSubtitleInput').value},"Home saved.");
+};
+
+$("homeLayoutForm").onsubmit=e=>{
+  e.preventDefault();
+  const n=Math.max(0,Math.min(12,parseInt($('homeArticlesBeforeDecor').value,10)));
+  saveMain({
+    homeTopEyebrow:$('homeTopEyebrow').value.trim(),
+    homeTopTitle:$('homeTopTitle').value.trim(),
+    homeArticlesBeforeDecor:Number.isFinite(n)?n:4,
+    homeDecorEyebrow:$('homeDecorEyebrow').value.trim(),
+    homeDecorTitle:$('homeDecorTitle').value.trim(),
+    homeMoreTitle:$('homeMoreTitle').value.trim()
+  },"Homepage layout saved.");
 };
 
 $("saveTopBar").onclick=()=>{
@@ -219,8 +243,8 @@ function productForm(p={active:true}){
   <label><input id="pactive" type="checkbox" ${p.active!==false?"checked":""}> Show / Publish Product</label>
   <label><input id="ptop" type="checkbox" ${p.topRated?"checked":""}> Mark as Top-Rated</label>
   <label><input id="pfeatured" type="checkbox" ${p.featured?"checked":""}> Mark as Featured</label>
-  <label><input id="pshowhome" type="checkbox" ${p.showOnHome?"checked":""}> Show on Homepage</label>
-  <p class="hint">You can also manage the Homepage's exactly-6 selection from the dedicated <b>Homepage Products</b> tab.</p>
+  <label>Homepage Placement<select id="phomesection"><option value="" ${curSection(p)===""?"selected":""}>Not on homepage</option><option value="top" ${curSection(p)==="top"?"selected":""}>Top section (kitchen appliances / top picks)</option><option value="decor" ${curSection(p)==="decor"?"selected":""}>Home Decor section (below the first articles)</option></select></label>
+  <p class="hint">You can also manage all homepage placements together from the <b>Homepage Products</b> tab.</p>
   <br><button id="saveProduct">Save Product</button>`;
 }
 
@@ -261,21 +285,24 @@ function bindProduct(id){
       featured:$('pfeatured').checked
     };
     if(!d.name)return alert("Product name is required.");
-    const wantsHome=$('pshowhome').checked;
-    const currentHomeCount=products.filter(x=>x.showOnHome===true&&x.id!==id).length;
-    if(wantsHome&&currentHomeCount>=6){
-      alert("The Homepage already has 6 selected products. Remove one first (here or in the Homepage Products tab) before adding another.");
+    const section=$('phomesection').value;
+    const sameSectionCount=products.filter(x=>x.id!==id&&curSection(x)===section).length;
+    if(section&&sameSectionCount>=HOME_LIMIT){
+      alert(`This homepage section already has ${HOME_LIMIT} products. Remove one first (here or in the Homepage Products tab) before adding another.`);
       return;
     }
-    d.showOnHome=wantsHome;
-    if(wantsHome){
+    d.showOnHome=!!section;
+    d.homeSection=section||null;
+    if(section){
       const existing=id?products.find(x=>x.id===id):null;
-      d.homeOrder=Number(existing?.homeOrder)||(currentHomeCount+1);
+      d.homeOrder=(existing&&curSection(existing)===section&&Number(existing.homeOrder))||(sameSectionCount+1);
     }else{
       d.homeOrder=null;
     }
-    id?await setDoc(doc(db,"products",id),d,{merge:true}):await addDoc(collection(db,"products"),d);
-    $('productEditor').hidden=true;
+    try{
+      id?await setDoc(doc(db,"products",id),d,{merge:true}):await addDoc(collection(db,"products"),d);
+      $('productEditor').hidden=true;
+    }catch(e){alert(e.message)}
   };
 }
 
@@ -285,37 +312,46 @@ $('newProduct').onclick=()=>{
 };
 
 function renderProducts(){
-  $('productList').innerHTML=[...products].sort((a,b)=>(a.order??999)-(b.order??999)).map(p=>`<div class="list-item"><div class="thumb">${p.image?`<img src="${esc(p.image)}">`:"✦"}</div><div class="info"><h3>${esc(p.name)}</h3><p>${esc(p.category||"Uncategorized")} · ${p.active===false?"Hidden":"Visible"} · ${esc(p.price||"")}${p.featured?" · Featured":""}${p.topRated?" · Top-Rated":""}${p.showOnHome?" · On Homepage":""}</p></div><button onclick="editProduct('${p.id}')">Edit</button><button class="danger" onclick="removeProduct('${p.id}')">Delete</button></div>`).join("");
+  $('productList').innerHTML=[...products].sort((a,b)=>(a.order??999)-(b.order??999)).map(p=>`<div class="list-item"><div class="thumb">${p.image?`<img src="${esc(p.image)}">`:"✦"}</div><div class="info"><h3>${esc(p.name)}</h3><p>${esc(p.category||"Uncategorized")} · ${p.active===false?"Hidden":"Visible"} · ${esc(p.price||"")}${p.featured?" · Featured":""}${p.topRated?" · Top-Rated":""}${curSection(p)==="top"?" · Homepage: Top":curSection(p)==="decor"?" · Homepage: Home Decor":""}</p></div><button onclick="editProduct('${p.id}')">Edit</button><button class="danger" onclick="removeProduct('${p.id}')">Delete</button></div>`).join("");
   renderHomeProducts();
 }
 
-// Homepage Products tab: lets the admin pick exactly 6 products for the Homepage and order them there,
-// independently from the "Order" field used on the All Products page.
+// Homepage Products tab: each product can be placed in the "Top" section (kitchen appliances / top picks),
+// the "Home Decor" section (shown below the first few articles), or left off the homepage.
 function renderHomeProducts(){
   const list=$('homeProductList');
   if(!list)return;
-  const selectedCount=products.filter(p=>p.showOnHome===true).length;
-  $('homeSelectedCount').textContent=selectedCount;
+  const cnt=k=>products.filter(p=>curSection(p)===k).length;
+  $('homeTopCount').textContent=cnt("top");
+  $('homeDecorCount').textContent=cnt("decor");
+  const rank={top:0,decor:1,"":2};
   const sorted=[...products].sort((a,b)=>{
-    const ah=a.showOnHome===true,bh=b.showOnHome===true;
-    if(ah!==bh)return ah?-1:1;
-    if(ah&&bh)return (a.homeOrder??999)-(b.homeOrder??999);
-    return (a.order??999)-(b.order??999);
+    const sa=curSection(a),sb=curSection(b);
+    if(sa!==sb)return rank[sa]-rank[sb];
+    return sa?((a.homeOrder??999)-(b.homeOrder??999)):((a.order??999)-(b.order??999));
   });
-  list.innerHTML=sorted.map(p=>`<div class="list-item"><div class="thumb">${p.image?`<img src="${esc(p.image)}">`:"✦"}</div><div class="info"><h3>${esc(p.name)}</h3><p>${esc(p.category||"Uncategorized")}${p.active===false?" · Hidden (won't show even if selected)":""}</p></div><label style="margin:0;display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" data-home-pick value="${p.id}" ${p.showOnHome?"checked":""}> On Homepage</label><label style="margin:0;display:flex;align-items:center;gap:6px">Position<input type="number" data-for="${p.id}" value="${Number(p.homeOrder)||""}" min="1" max="6" style="width:60px"></label></div>`).join("");
+  list.innerHTML=sorted.map(p=>{
+    const sec=curSection(p);
+    return `<div class="list-item"><div class="thumb">${p.image?`<img src="${esc(p.image)}">`:"✦"}</div><div class="info"><h3>${esc(p.name)}</h3><p>${esc(p.category||"Uncategorized")}${p.active===false?" · Hidden (won't show even if selected)":""}</p></div>
+    <label style="margin:0;display:flex;align-items:center;gap:6px;font-weight:600">Section<select data-home-sec="${p.id}"><option value="" ${sec===""?"selected":""}>Not on homepage</option><option value="top" ${sec==="top"?"selected":""}>Top section</option><option value="decor" ${sec==="decor"?"selected":""}>Home Decor section</option></select></label>
+    <label style="margin:0;display:flex;align-items:center;gap:6px">Position<input type="number" data-for="${p.id}" value="${Number(p.homeOrder)||""}" min="1" max="${HOME_LIMIT}" style="width:60px"></label></div>`;
+  }).join("");
 }
 $('saveHomeProducts')?.addEventListener("click",async()=>{
-  const picks=[...document.querySelectorAll('[data-home-pick]:checked')].map(x=>x.value);
-  if(picks.length>6){alert(`You selected ${picks.length} products. Please select exactly 6 (or fewer) for the Homepage.`);return}
+  const picks={};
+  document.querySelectorAll('[data-home-sec]').forEach(x=>{picks[x.dataset.homeSec]=x.value});
+  const counts={top:0,decor:0};
+  Object.values(picks).forEach(v=>{if(v)counts[v]++});
+  if(counts.top>HOME_LIMIT||counts.decor>HOME_LIMIT){alert(`Each homepage section can hold at most ${HOME_LIMIT} products (Top: ${counts.top}, Home Decor: ${counts.decor}).`);return}
   const btn=$('saveHomeProducts');
   btn.disabled=true;btn.textContent="Saving…";
   try{
     for(const p of products){
-      const pick=picks.includes(p.id);
+      const sec=picks[p.id]??curSection(p);
       const orderInput=document.querySelector(`[data-for="${p.id}"]`);
-      const homeOrder=pick?(Number(orderInput?.value)||0):null;
-      if(!!p.showOnHome!==pick||(pick&&p.homeOrder!==homeOrder)){
-        await updateDoc(doc(db,"products",p.id),{showOnHome:pick,homeOrder:pick?homeOrder:null});
+      const homeOrder=sec?(Number(orderInput?.value)||0):null;
+      if(curSection(p)!==sec||(sec&&p.homeOrder!==homeOrder)||(sec&&!p.homeSection)){
+        await updateDoc(doc(db,"products",p.id),{showOnHome:!!sec,homeSection:sec||null,homeOrder});
       }
     }
     alert("Homepage selection saved.");
@@ -329,7 +365,9 @@ function articleForm(a={active:true}){
   return `<h3>${a.id?"Edit":"Add"} Article</h3>
   <label>Title<input id="atitle" value="${esc(a.title||"")}" required></label>
   <label>Excerpt / Description<textarea id="aexcerpt">${esc(a.excerpt||"")}</textarea></label>
-  <label>Article Content<textarea id="acontent" style="min-height:220px">${esc(a.content||"")}</textarea></label>
+  <label>Article Content</label>
+  <div id="acontentEditor"></div>
+  <p class="hint">Select any text, then use the toolbar: change its <b>size</b>, make it <b>bold</b> / <i>italic</i>, or press <b>🔗 Link</b> to turn it into a blue affiliate link that opens another website. Use <b>🖼 Image</b> to place a picture inside the text, with a link underneath it. Click an image to resize, move or remove it.</p>
   <label>Featured Image URL
   <div class="image-field"><input id="aimage" placeholder="https://..." value="${esc(a.image||"")}"><img id="aimagePreview" class="image-preview" src="${esc(a.image||"")}" ${a.image?"":"hidden"}><button type="button" id="aimageRemove" ${a.image?"":"hidden"}>Remove Image URL</button></div>
   <p class="hint">Paste an image URL — it is saved to the article and keeps showing after a page refresh.</p>
@@ -346,6 +384,9 @@ function articleForm(a={active:true}){
 $('newArticle').onclick=()=>{$('articleEditor').hidden=false;$('articleEditor').innerHTML=articleForm();bindArticle()};
 
 function bindArticle(id){
+  const existing=id?articles.find(x=>x.id===id):null;
+  const startHtml=existing?.contentHtml||plainToHtml(existing?.content||"");
+  articleEditor=createEditor($('acontentEditor'),startHtml,{uploadImage:async f=>{const u=await uploadTo("images/articles",f);loadGallery();return u}});
   $('aimage').oninput=()=>{
     const url=$('aimage').value.trim();
     if(url){$('aimagePreview').src=url;$('aimagePreview').hidden=false;$('aimageRemove').hidden=false}
@@ -361,7 +402,8 @@ function bindArticle(id){
     const d={
       title:$('atitle').value.trim(),
       excerpt:$('aexcerpt').value,
-      content:$('acontent').value,
+      contentHtml:articleEditor.getHTML(),
+      content:$('acontentEditor').querySelector('.rte-area').innerText,
       image:$('aimage').value,
       category:$('acategory').value.trim()||"Buying Guide",
       order:Number($('aorder').value)||0,
@@ -370,8 +412,10 @@ function bindArticle(id){
       published:$('aactive').checked
     };
     if(!d.title)return alert("Article title is required.");
-    id?await setDoc(doc(db,"articles",id),d,{merge:true}):await addDoc(collection(db,"articles"),d);
-    $('articleEditor').hidden=true;
+    try{
+      id?await setDoc(doc(db,"articles",id),d,{merge:true}):await addDoc(collection(db,"articles"),d);
+      $('articleEditor').hidden=true;
+    }catch(e){alert(e.message)}
   };
 }
 

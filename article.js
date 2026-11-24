@@ -1,4 +1,5 @@
 import {db,doc,onSnapshot,collection,$,esc,applyChrome,initChromeInteractions,productImage} from "./common.js";
+import {sanitizeHtml} from "./richtext.js";
 const id=new URLSearchParams(location.search).get("id")||"";
 let products=[],allArticles=[],currentArticle=null;
 initChromeInteractions();
@@ -102,7 +103,8 @@ function renderArticle(a){
   $("articleExcerpt").innerHTML=a.excerpt?`<p style="font-size:1.15rem;color:var(--muted);margin:0 0 20px">${esc(a.excerpt)}</p>`:"";
   const img=$("articleImage");
   if(a.image){img.src=a.image;img.alt=a.title||"";img.hidden=false}else img.hidden=true;
-  $("articleContent").innerHTML=esc(a.content||"").replace(/\n/g,"<br>");
+  // New articles are saved as formatted HTML (sanitized); older articles are plain text.
+  $("articleContent").innerHTML=a.contentHtml?sanitizeHtml(a.contentHtml):esc(a.content||"").replace(/\n/g,"<br>");
   renderRecommended(a);
   renderRelated(a);
 }

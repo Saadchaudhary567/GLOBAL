@@ -7,6 +7,19 @@
 
 <section id="tab-home" class="tab"><h1>Home</h1>
 <form id="homeForm" class="panel"><label>Top Information Bar Text<input id="topBarInput"></label><label>Hero Title<textarea id="heroTitleInput"></textarea></label><label>Hero Subtitle<textarea id="heroSubtitleInput"></textarea></label><p class="hint">The old large product-image hero banner has been removed; the hero now stays clean and text-focused.</p><button>Save Home</button></form>
+<form id="homeLayoutForm" class="panel">
+<h3>Homepage Layout (sections order)</h3>
+<p class="hint">Homepage order: <b>1)</b> Top section products (kitchen appliances / top picks) → <b>2)</b> first few articles → <b>3)</b> Home Decor products → <b>4)</b> remaining articles. Choose which product goes in which section from the <b>Homepage Products</b> tab.</p>
+<div class="form-grid">
+<label>Top Section Small Heading<input id="homeTopEyebrow"></label>
+<label>Top Section Title<input id="homeTopTitle"></label>
+<label>How many articles before the Home Decor section?<input id="homeArticlesBeforeDecor" type="number" min="0" max="12" value="4"></label>
+<label>Home Decor Small Heading<input id="homeDecorEyebrow"></label>
+<label>Home Decor Section Title<input id="homeDecorTitle"></label>
+<label>Heading for the remaining articles<input id="homeMoreTitle"></label>
+</div>
+<button>Save Homepage Layout</button>
+</form>
 <div class="panel">
 <h3>Top Bar Style</h3>
 <div class="form-grid">
@@ -21,7 +34,7 @@
 </div>
 </section>
 
-<section id="tab-homeproducts" class="tab"><h1>Homepage Products</h1><p class="hint">Choose exactly 6 products to feature on the Homepage. Every other published product still appears on the <b>All Products</b> page — never on the Homepage. Selected: <b id="homeSelectedCount">0</b> / 6.</p><div id="homeProductList" class="list"></div><button type="button" id="saveHomeProducts">Save Homepage Selection</button></section>
+<section id="tab-homeproducts" class="tab"><h1>Homepage Products</h1><p class="hint">For every product choose where it appears on the Homepage: <b>Top section</b> (kitchen appliances / top picks, shown first), <b>Home Decor section</b> (shown below the first few articles), or <b>Not on homepage</b>. Position 1 shows first. Top: <b id="homeTopCount">0</b> · Home Decor: <b id="homeDecorCount">0</b> (max 12 each). Every published product still appears on the <b>All Products</b> page.</p><div id="homeProductList" class="list"></div><button type="button" id="saveHomeProducts">Save Homepage Selection</button></section>
 
 <section id="tab-categories" class="tab"><h1>Categories</h1><button id="newCategory">+ Add Category</button><div id="categoryEditor" class="panel" hidden></div><div id="categoryList" class="list"></div></section>
 
